@@ -7,10 +7,10 @@
 #'
 #' @param probe_mat numeric matrix, rows as seqs and columns as samples
 #' @param colData_in experiment design data.frame
-#' @param t_sd_shift sd shift multiplier for diff t-test
-#' @param t_abs_shift abs shift to use for the diff t-test
-#' @param t_paired do paired t-test
-#' @param z_sd_shift sd shift multiplier for global z-test
+#' @param d_sd_shift sd shift multiplier for diff test
+#' @param d_abs_shift abs shift to use for the diff test
+#' @param d_paired do paired t-test
+#' @param g_sd_shift sd shift multiplier for global test
 #' @param use which p-value method(s) to use
 #'
 #' @return matrix of calculated p-values
@@ -18,48 +18,48 @@
 calcProbePValuesProbeMat<-function(
         probe_mat,
         colData_in,
-        t_sd_shift = NA,
-        t_abs_shift = NA,
-        t_paired = FALSE,
-        z_sd_shift=0,
+        d_sd_shift = NA,
+        d_abs_shift = NA,
+        d_paired = FALSE,
+        g_sd_shift=0,
         use = "both") {
 
-    if (use == "both") { use_t <- TRUE; use_z <- TRUE; use_c <- TRUE }
-    else if (use == "t") { use_t <- TRUE; use_z <- FALSE; use_c <- FALSE }
-    else if (use == "z") { use_t <- FALSE; use_z <- TRUE; use_c <- FALSE }
-    else { stop("Unknown use paramater:" , use) }
+    diff_fxn <- switch(
+        use,
+        "z" = NA,
+        "t" = calcProbePValuesT,
+        "tz" = calcProbePvaluesT,
+        "w" = calcProbePValuesW,
+        NA
+    )
+    g_fxn <- switch(
+        use,
+        "z" = calcProbePValuesZ,
+        "tz" = calcProbPvaluesZ,
+        NA
+    )
+    if (is.na(diff_fxn) && is.na(g_fxn)) {
+        stop("Unknown use parameter:", use)
+    }
     if (missing(colData_in) || is.null(colData_in)) {
         c_mat <- probe_mat
     } else {
         c_mat <- probe_mat[,rownames(colData_in)]
     }
-    if (use_t) {
-        if (t_paired) {
-            pvaluet_df <- calcProbePValuesTPaired(
-                probe_mat = c_mat, colData_in = colData_in,
-                sd_shift = t_sd_shift, abs_shift = t_abs_shift)
+    praw <- NULL
+    if (!is.na(diff_fxn)) {
+        praw <- diff_fxn(c_mat, colData_in, d_sd_shift, d_abs_shift)
+    }
+    if (!is.na(g_fxn)) {
+        pg <- g_fxn(c_mat, colData_in, g_sd_shift)
+        if (!is.null(praw)) {
+            praw <- pg
         } else {
-            pvaluet_df <- calcProbePValuesTUnpaired(
-                c_mat, colData_in = colData_in,
-                sd_shift = t_sd_shift,
-                abs_shift = t_abs_shift)
+            praw <- combinePValueMatrix(praw, pg)
         }
-        praw <- pvaluet_df
-    }
-    if (use_z) {
-        pvaluez_df <- calcProbePValuesZ(
-            c_mat, colData_in, sd_shift = z_sd_shift)
-        praw <- pvaluez_df
-    }
-    if (use_c) {
-        praw <- combinePValueMatrix(pvaluet_df, pvaluez_df)
     }
     praw[is.na(praw)] <- 1.0 # Conservatively set NAs to p-value = 1
     ans <- praw
-    attr(ans, "c_mat") <- c_mat
-    attr(ans, "colData") <- colData_in
-    if (use_t) { attr(ans, "t") <- pvaluet_df }
-    if (use_z) { attr(ans, "z") <- pvaluez_df }
     return(ans)
 }
 
@@ -85,7 +85,8 @@ combinePValueMatrix<-function(pmat1, pmat2) {
 #' @param t_abs_shift absolute shift for differential test
 #' @param t_paired run paired analysis
 #' @param z_sd_shift standard deviation shift for global test
-#' @param use use global-test ("z"), differential-test ("t"), or both ("both")
+#' @param use use global-test ("z"), differential-test using t.test ("t"),
+#' differential-test using wilcox ("w"), or both global and differential ("zt")
 #' @param p_adjust_method method for adjusting p-values
 #'
 #' @return HERONSequenceDataSet/HERONProbeDataSet with the pvalue assay added
@@ -101,7 +102,7 @@ calcCombPValues<-function(
     t_abs_shift = NA,
     t_paired = FALSE,
     z_sd_shift = 0,
-    use = "both",
+    use = "zt",
     p_adjust_method = "BH"
 ) {
     stopifnot(is(obj, "HERONSequenceDataSet") || is(obj, "HERONProbeDataSet"))

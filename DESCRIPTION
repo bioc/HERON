@@ -1,7 +1,8 @@
 Package: HERON
 Type: Package
+Date: 2024-03-21
 Title: Hierarchical Epitope pROtein biNding
-Version: 0.99.2
+Version: 1.1.2
 Authors@R: c(
     person(given="Sean",
            family = "McIlwain",
@@ -47,7 +48,7 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Depends: 
-    R (>= 4.2),
+    R (>= 4.3.0),
     SummarizedExperiment (>= 1.1.6),
     GenomicRanges,
     IRanges,

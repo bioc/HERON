@@ -26,7 +26,7 @@ post, ptid - subject id, and condition - all COVID
 <https://github.com/Ong-Research/UW_Adult_Covid-19>
 }
 \usage{
-data(heffron2021_wuhan)
+heffron2021_wuhan
 }
 \description{
 A subset of data from the paper

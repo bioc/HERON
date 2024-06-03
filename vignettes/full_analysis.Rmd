@@ -457,6 +457,12 @@ knitr::kable(assay(pval_res[1:3,],"pvalue"))
 
 ```
 
+# USE wilcox test
+
+```{r}
+
+```
+
 # Use of the condition column
 
 ```{r}

@@ -5,14 +5,14 @@
 \title{Calculate p-values using the "exprs" assay}
 \usage{
 calcCombPValues(
-    obj,
-    colData_in = NULL,
-    t_sd_shift = NA,
-    t_abs_shift = NA,
-    t_paired = FALSE,
-    z_sd_shift = 0,
-    use = "both",
-    p_adjust_method = "BH"
+  obj,
+  colData_in = NULL,
+  d_sd_shift = NA,
+  d_abs_shift = NA,
+  d_paired = FALSE,
+  g_sd_shift = 0,
+  use = "tz",
+  p_adjust_method = "BH"
 )
 }
 \arguments{
@@ -20,15 +20,16 @@ calcCombPValues(
 
 \item{colData_in}{optional column DataFrame (default: NULL => colData(obj)))}
 
-\item{t_sd_shift}{standard deviation shift for differential test}
+\item{d_sd_shift}{standard deviation shift for differential test}
 
-\item{t_abs_shift}{absolute shift for differential test}
+\item{d_abs_shift}{absolute shift for differential test}
 
-\item{t_paired}{run paired analysis}
+\item{d_paired}{run paired analysis}
 
-\item{z_sd_shift}{standard deviation shift for global test}
+\item{g_sd_shift}{standard deviation shift for global test}
 
-\item{use}{use global-test ("z"), differential-test ("t"), or both ("both")}
+\item{use}{use global-test ("z"), differential-test using t.test ("t"),
+differential-test using wilcox ("w"), or both global and differential ("tz")}
 
 \item{p_adjust_method}{method for adjusting p-values}
 }

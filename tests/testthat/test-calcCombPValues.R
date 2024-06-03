@@ -8,8 +8,8 @@ test_that("calcCombPvalues", {
     expect_no_error(calcCombPValues(heffron2021_wuhan, use="t"))
     expect_no_error(calcCombPValues(heffron2021_wuhan, use="z"))
 
-    expect_no_error(calcCombPValues(heffron2021_wuhan, t_sd_shift = 1))
-    expect_no_error(calcCombPValues(heffron2021_wuhan, t_abs_shift = 1))
+    expect_no_error(calcCombPValues(heffron2021_wuhan, d_sd_shift = 1))
+    expect_no_error(calcCombPValues(heffron2021_wuhan, d_abs_shift = 1))
     expect_error(
         calcCombPValues(
             obj = heffron2021_wuhan,
@@ -18,8 +18,10 @@ test_that("calcCombPvalues", {
         )
     )
 
-    expect_no_error(calcCombPValues(heffron2021_wuhan, z_sd_shift = 1))
+    expect_no_error(calcCombPValues(heffron2021_wuhan, g_sd_shift = 1))
 
+    ## Test using wilcox
+    expect_no_error(calcCombPValues(heffron2021_wuhan, use="w"))
 
     ## Test bad parameter
     expect_error(calcCombPValues(heffron2021_wuhan, use="k"))
@@ -47,27 +49,27 @@ test_that("calcCombPvalues", {
     colData(paired_ds) <- colData_paired
 
     ### calculate p-values
-    expect_no_error(calcCombPValues(obj = paired_ds, t_paired = TRUE))
+    expect_no_error(calcCombPValues(obj = paired_ds, d_paired = TRUE))
 
     ##Test with shifts
     expect_no_error(calcCombPValues(
         obj = paired_ds,
-        t_paired = TRUE,
-        t_sd_shift = 1)
+        d_paired = TRUE,
+        d_sd_shift = 1)
     )
 
     expect_no_error(calcCombPValues(
         obj = paired_ds,
-        t_paired = TRUE,
-        t_abs_shift = 1)
+        d_paired = TRUE,
+        d_abs_shift = 1)
     )
 
     expect_error(
         calcCombPValues(
             obj = paired_ds,
-            t_paired = TRUE,
-            t_sd_shift = 1,
-            t_abs_shift = 1
+            d_paired = TRUE,
+            d_sd_shift = 1,
+            d_abs_shift = 1
         )
     )
 })

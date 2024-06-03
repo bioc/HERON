@@ -26,7 +26,7 @@ post, ptid - subject id, and condition - all COVID
 <https://github.com/Ong-Research/UW_Adult_Covid-19>
 }
 \usage{
-heffron2021_wuhan
+data(heffron2021_wuhan)
 }
 \value{
 HERONSequenceDataSet

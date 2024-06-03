@@ -2,7 +2,7 @@ Package: HERON
 Type: Package
 Date: 2024-03-21
 Title: Hierarchical Epitope pROtein biNding
-Version: 1.1.2
+Version: 1.2.1
 Authors@R: c(
     person(given="Sean",
            family = "McIlwain",

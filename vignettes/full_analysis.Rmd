@@ -91,7 +91,7 @@ can indicate multiple conditions for the post samples.
 knitr::kable(head(colData(heffron2021_wuhan)))
 ```
 
-#### probe metadata
+#### Probe metadata
 
 The probe_meta data frame describes the mapping the amino acid sequence 
 (*PROBE_SEQUENCE*) of the probes to the probe identifier (*PROBE_ID*).  The
@@ -289,12 +289,9 @@ epi_segments_hclust_res2 <- findEpitopeSegments(
 )
 ```
 
-
-
 ### Find Epitope Segments using the skater method
 
 #### binary calls with hamming distance
-
 
 ```{r, example_epitope_finding_skater}
 epi_segments_skater_res <- findEpitopeSegments(
@@ -450,7 +447,6 @@ knitr::kable(assay(probe_sm_calls,"calls")[1:3,1:3])
 knitr::kable(head(probe_sm_k_of_n[probe_sm_k_of_n$K > 0,]))
 ```
 
-
 ### Calculate paired t-tests
 
 Paired t-tests can be utilized and combined with the z-tests as well.  Here is
@@ -498,6 +494,12 @@ knitr::kable(assay(probe_pval_res_w[1:3, 1:5], "padj"))
 
 ### Use of the condition column
 
+You can use the *condition* column in the *colData* dataframe.
+It is used in the *getKofN* function. The data type of the 
+column can be either a character or factor. When the condition
+column exists in the *colData*, three columns (number of 
+samples (K), frequency (F), and percent (P)) are provided for
+each unique factor.
 
 ```{r}
 col_data <- colData(heffron2021_wuhan)
@@ -513,8 +515,10 @@ seq_pval_res <- calcCombPValues(seq_ds_qn)
 probe_pval_res <- convertSequenceDSToProbeDS(seq_pval_res)
 probe_calls_res <- makeProbeCalls(probe_pval_res)
 probe_calls_k_of_n <- getKofN(probe_calls_res)
-
-
+probe_calls_k_of_n <- 
+    probe_calls_k_of_n[
+        order(probe_calls_k_of_n$K, decreasing = TRUE),]
+knitr::kable(head(probe_calls_k_of_n))
 ```
 
 

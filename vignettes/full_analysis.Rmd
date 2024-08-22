@@ -52,7 +52,7 @@ devtools::install_github("Ong-Research/HERON")
 
 ```{r setup}
 options(warn=2)
-library(HERON)
+suppressPackageStartupMessages(library(HERON))
 ```
 
 ## Example
@@ -61,49 +61,76 @@ These are examples which shows you how to interact with the code.  We will be
 using a subset of the COVID-19 peptide binding array dataset from the 
 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8245122/ publication.
 
-### Pre-process data
+### The *HERONSequenceData* object
 
-First, we start with a sequence *data.frame* where rows are amino acid 
-sequences of the peptide binding probe and the columns are samples.   
+The *HERONSequenceDataSet* object is the first object needed for running HERON.
+The *HERONSequenceDataSet* is a subclass of *SummarizedExperiment* from 
+base Bioconductor. The components are a sequence *data.frame* or *matrix* where rows 
+are amino acid sequences of the peptide binding probe and the columns are
+samples, a colData *DFrame*, and a metadata *data.frame* that maps 
+sequences to probes.
 
-```{r, example_process_data}
+#### Sequence matrix
+
+```{r, example_seq_mat}
 data(heffron2021_wuhan)
-
 knitr::kable(assay(heffron2021_wuhan)[1:5,1:5])
 ```
 
+#### colData
 
-The data is pre-processed by first quantile normalizing on sequence-level data.
-
-```{r, quantile_normalize}
-seq_ds_qn <- quantileNormalize(heffron2021_wuhan)
-knitr::kable(head(assay(seq_ds_qn)[,1:5]))
-```
-
-### Calculate probe-level p-values
-
-The quantile normalized data is then used with the *colData* and *probe_meta*
-data frames to calculate probe-level p-values.  The *colData* data frame
-describes the experimental setup of the samples.  for the *colData* data frame,
-the important columns are *ptid*, *visit*, and *SampleName*.  The *SampleName* 
-is the column name of the sequence table, *ptid* is the name of the sample, and 
-*visit* is either pre or post.  The *ptid* can the same value for one pre and 
-post sample, which would indicate a paired design. A *condition* column can 
-also be provided which can indicate multiple conditions for the post samples.
+The *colData* data frame describes the experimental setup of the samples.  
+For the *colData* data frame, the important columns are *ptid*, *visit*, 
+and *SampleName*.  The *SampleName* is the column name of the sequence table, 
+*ptid* is the name of the sample, and  *visit* is either pre or post.  
+The *ptid* can the same value for one pre and post sample, which would 
+indicate a paired design. A *condition* column can also be provided which 
+can indicate multiple conditions for the post samples.
 
 ```{r example_colData}
 knitr::kable(head(colData(heffron2021_wuhan)))
 ```
+
+#### probe metadata
 
 The probe_meta data frame describes the mapping the amino acid sequence 
 (*PROBE_SEQUENCE*) of the probes to the probe identifier (*PROBE_ID*).  The
 PROBE_ID contains the name of the protein and the position within the
 protein of the first acid of the probe sequence separated by a semicolon. 
 
+
 ```{r example_probe_meta}
 probe_meta <- metadata(heffron2021_wuhan)$probe_meta
 knitr::kable(head(probe_meta[,c("PROBE_SEQUENCE", "PROBE_ID")]))
 ```
+
+### Creating the *HERONSequenceData* object
+
+The *heffron2021_wuhan* data object is already a *HERONSequenceDataSet*
+object. We can create the same object using the *HERONSequenceDataSet*
+constructor as an example.
+
+```{r, create_object}
+seq_mat <- assay(heffron2021_wuhan)
+sds <- HERONSequenceDataSet(seq_mat)
+colData(sds) <- colData(heffron2021_wuhan)
+metadata(sds)$probe_meta <- probe_meta
+```
+
+### Pre-process data
+
+The data is pre-processed by first quantile normalizing on sequence-level data.
+
+```{r, quantile_normalize}
+seq_ds_qn <- quantileNormalize(sds)
+knitr::kable(head(assay(seq_ds_qn)[,1:5]))
+```
+
+### Calculate probe-level p-values
+
+The quantile normalized data is then used with the *colData* and *probe_meta*
+data frames to calculate probe-level p-values.  
+
 The *calcCombPValues* call will first calculate the probe level
 p-values using the colData, adjust the probe p-values on a 
 column-by-column basis frame. 
@@ -111,13 +138,13 @@ column-by-column basis frame.
 The combined p-values can be calculated on the sequence data set, then
 converted to a probe data set through *convertSequenceDSToProbeDS*, or 
 calculated on the probe data set.  If the data was smoothed prior using 
-consecutive probes, then the p-values should calculated on the 
-smoothed probe data set.
+consecutive probes on the same protein, then the p-values 
+should calculated on the smoothed probe data set.
 
 ```{r example_probe_pvalues}
 seq_pval_res <- calcCombPValues(seq_ds_qn)
 probe_pval_res <- convertSequenceDSToProbeDS(seq_pval_res)
-knitr::kable(head(assays(probe_pval_res)$padj))
+knitr::kable(head(assay(probe_pval_res, "padj")[,1:5]))
 ```
 
 ### Obtain probe-level calls
@@ -139,8 +166,8 @@ or protein can be determined using the *getKofN* function.
 
 ```{r}
 probe_calls_k_of_n <- getKofN(probe_calls_res)
+knitr::kable(head(probe_calls_k_of_n))
 ```
-
 
 ### Find Epitope Segments using the unique method
 

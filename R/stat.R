@@ -7,10 +7,10 @@
 #'
 #' @param probe_mat numeric matrix, rows as seqs and columns as samples
 #' @param colData_in experiment design data.frame
-#' @param t_sd_shift sd shift multiplier for diff t-test
-#' @param t_abs_shift abs shift to use for the diff t-test
-#' @param t_paired do paired t-test
-#' @param z_sd_shift sd shift multiplier for global z-test
+#' @param d_sd_shift sd shift multiplier for diff test
+#' @param d_abs_shift abs shift to use for the diff test
+#' @param d_paired do paired t-test
+#' @param g_sd_shift sd shift multiplier for global test
 #' @param use which p-value method(s) to use
 #'
 #' @return matrix of calculated p-values
@@ -18,48 +18,48 @@
 calcProbePValuesProbeMat<-function(
         probe_mat,
         colData_in,
-        t_sd_shift = NA,
-        t_abs_shift = NA,
-        t_paired = FALSE,
-        z_sd_shift=0,
+        d_sd_shift = NA,
+        d_abs_shift = NA,
+        d_paired = FALSE,
+        g_sd_shift=0,
         use = "both") {
 
-    if (use == "both") { use_t <- TRUE; use_z <- TRUE; use_c <- TRUE }
-    else if (use == "t") { use_t <- TRUE; use_z <- FALSE; use_c <- FALSE }
-    else if (use == "z") { use_t <- FALSE; use_z <- TRUE; use_c <- FALSE }
-    else { stop("Unknown use paramater:" , use) }
+    diff_fxn <- switch(
+        use,
+        "z" = NULL,
+        "t" = calcProbePValuesT,
+        "tz" = calcProbePValuesT,
+        "w" = calcProbePValuesW,
+        NULL
+    )
+    g_fxn <- switch(
+        use,
+        "z" =  calcProbePValuesZ,
+        "tz" = calcProbePValuesZ,
+        NULL
+    )
+    if (is.null(diff_fxn) && is.null(g_fxn)) {
+        stop("Unknown use parameter:", use)
+    }
     if (missing(colData_in) || is.null(colData_in)) {
         c_mat <- probe_mat
     } else {
         c_mat <- probe_mat[,rownames(colData_in)]
     }
-    if (use_t) {
-        if (t_paired) {
-            pvaluet_df <- calcProbePValuesTPaired(
-                probe_mat = c_mat, colData_in = colData_in,
-                sd_shift = t_sd_shift, abs_shift = t_abs_shift)
+    praw <- NULL
+    if (!is.null(diff_fxn)) {
+        praw <- diff_fxn(c_mat, colData_in, d_sd_shift, d_abs_shift, d_paired)
+    }
+    if (!is.null(g_fxn)) {
+        pg <- g_fxn(c_mat, colData_in, g_sd_shift)
+        if (is.null(praw)) {
+            praw <- pg
         } else {
-            pvaluet_df <- calcProbePValuesTUnpaired(
-                c_mat, colData_in = colData_in,
-                sd_shift = t_sd_shift,
-                abs_shift = t_abs_shift)
+            praw <- combinePValueMatrix(praw, pg)
         }
-        praw <- pvaluet_df
-    }
-    if (use_z) {
-        pvaluez_df <- calcProbePValuesZ(
-            c_mat, colData_in, sd_shift = z_sd_shift)
-        praw <- pvaluez_df
-    }
-    if (use_c) {
-        praw <- combinePValueMatrix(pvaluet_df, pvaluez_df)
     }
     praw[is.na(praw)] <- 1.0 # Conservatively set NAs to p-value = 1
     ans <- praw
-    attr(ans, "c_mat") <- c_mat
-    attr(ans, "colData") <- colData_in
-    if (use_t) { attr(ans, "t") <- pvaluet_df }
-    if (use_z) { attr(ans, "z") <- pvaluez_df }
     return(ans)
 }
 
@@ -81,11 +81,12 @@ combinePValueMatrix<-function(pmat1, pmat2) {
 #'
 #' @param obj HERONSequenceDataSet or HERONProbeDataSet
 #' @param colData_in optional column DataFrame (default: NULL => colData(obj)))
-#' @param t_sd_shift standard deviation shift for differential test
-#' @param t_abs_shift absolute shift for differential test
-#' @param t_paired run paired analysis
-#' @param z_sd_shift standard deviation shift for global test
-#' @param use use global-test ("z"), differential-test ("t"), or both ("both")
+#' @param d_sd_shift standard deviation shift for differential test
+#' @param d_abs_shift absolute shift for differential test
+#' @param d_paired run paired analysis
+#' @param g_sd_shift standard deviation shift for global test
+#' @param use use global-test ("z"), differential-test using t.test ("t"),
+#' differential-test using wilcox ("w"), or both global and differential ("tz")
 #' @param p_adjust_method method for adjusting p-values
 #'
 #' @return HERONSequenceDataSet/HERONProbeDataSet with the pvalue assay added
@@ -97,11 +98,11 @@ combinePValueMatrix<-function(pmat1, pmat2) {
 calcCombPValues<-function(
     obj,
     colData_in = NULL,
-    t_sd_shift = NA,
-    t_abs_shift = NA,
-    t_paired = FALSE,
-    z_sd_shift = 0,
-    use = "both",
+    d_sd_shift = NA,
+    d_abs_shift = NA,
+    d_paired = FALSE,
+    g_sd_shift = 0,
+    use = "tz",
     p_adjust_method = "BH"
 ) {
     stopifnot(is(obj, "HERONSequenceDataSet") || is(obj, "HERONProbeDataSet"))
@@ -109,10 +110,10 @@ calcCombPValues<-function(
     pval <- calcProbePValuesProbeMat(
         probe_mat = assay(obj, "exprs"),
         colData_in = colData_in,
-        t_sd_shift = t_sd_shift,
-        t_abs_shift = t_abs_shift,
-        t_paired = t_paired,
-        z_sd_shift = z_sd_shift,
+        d_sd_shift = d_sd_shift,
+        d_abs_shift = d_abs_shift,
+        d_paired = d_paired,
+        g_sd_shift = g_sd_shift,
         use = use
     )
 
@@ -251,162 +252,7 @@ getPTP<-function(x, stderr, sd_shift, sx, abs_shift, dfree) {
 }
 
 
-#' Calculate Probe p-values using a differential paired t-test
-#'
-#' @param probe_mat numeric matrix or data.frame of values
-#' @param colData_in design data.frame
-#' @param sd_shift standard deviation shift to use when calculating p-values.
-#' Either sd_shift or abs_shift should be set
-#' @param abs_shift absolute shift to use when calculating p-values.
-#' @param debug print debugging information
-#'
-#' @return matrix of p-values on the post columns defined in the colData matrix.
-#' Attributes of the matrix are:
-#'
-#' pars - data.frame parameters used in the paired t-test for each row
-#' (e.g. df, sd)
-#'
-#' mapping - data.frame of mapping used for pre-post column calculation
-#' diff_mat - data.frame
-#' containing the post-pre differences for each sample (column) and probe (row)
-#'
-#' @export
-#'
-#' @examples
-#' data(heffron2021_wuhan)
-#' colData_wu <- colData(heffron2021_wuhan)
-#' pre_idx = which(colData_wu$visit == "pre")
-#' ## Make some samples paired
-#' colData_post = colData_wu[colData_wu$visit == "post",]
-#' new_ids = rownames(colData_post)[seq_len(5)]
-#' colData_wu$ptid[pre_idx[seq_len(5)]] = new_ids
-#' exprs <- assay(heffron2021_wuhan, "exprs")
-#' pval_res <- calcProbePValuesTPaired(exprs, colData_wu)
-calcProbePValuesTPaired <- function(
-        probe_mat,
-        colData_in,
-        sd_shift = NA,
-        abs_shift = NA,
-        debug = FALSE
-) {
-    if (!is.na(sd_shift) && !is.na(abs_shift)) {
-        stop("Either sd or abs can be set. Not both.")
-    }
-    mapping <- getPairedMapping(colData_in)
-    ans <- matrix(NA, nrow = nrow(probe_mat), ncol=nrow(mapping))
-    diff_mat <- probe_mat[,mapping$post] - probe_mat[,mapping$pre]
-    colnames(diff_mat) <- mapping$ptid
-    rownames(diff_mat) <- rownames(probe_mat)
-    pars <- matrix(data = NA, nrow=nrow(probe_mat), ncol = 5)
-    colnames(pars) <- c("diff_mean", "diff_sd", "diff_var",
-        "diff_stderr", "dfree")
-    rownames(pars) <- rownames(probe_mat)
-    for (r_idx in seq_len(nrow(probe_mat))) {
-        x <- c(t(probe_mat[r_idx,mapping$post] - probe_mat[r_idx,mapping$pre]))
-        nx <- length(x)
-        mx <- mean(x, na.rm=TRUE)
-        sx <- stats::sd(x, na.rm=TRUE)
-        vx <- stats::var(x, na.rm=TRUE)
-        stderr <- sqrt(vx/nx)
-        dfree <- sum(!is.na(x))
-        pars[r_idx, "diff_mean"] <- mx
-        pars[r_idx, "diff_var"] <- vx
-        pars[r_idx, "diff_sd"] <- sx
-        pars[r_idx, "diff_stderr"] <- stderr
-        pars[r_idx, "dfree"] <- dfree
-        for (c_idx in seq_len((nrow(mapping)))) {
-            tp <- getPTP(x[c_idx], stderr, sd_shift, sx, abs_shift, dfree)
-            ans[r_idx, c_idx] <- tp
-        }
-    }
-    ans <- as.data.frame(ans, stringsAsFactors=FALSE)
-    colnames(ans) <- mapping$ptid
-    rownames(ans) <- rownames(probe_mat)
-    attr(ans, "pars") <- pars
-    attr(ans, "mapping") <- mapping
-    attr(ans, "diff_mat") <- diff_mat
-    return(ans)
-}
 
-getPostTVal <- function(
-    post_mat, pre_means,
-    pre_stderr, pre_sds,
-    sd_shift, abs_shift) {
-    no_shift <- is.na(sd_shift) && is.na(abs_shift)
-    if (no_shift) {
-        post_tvalues <- (post_mat - pre_means)/pre_stderr
-    } else if (!is.na(sd_shift)) {
-        post_tvalues <- (post_mat - pre_means-sd_shift*pre_sds)/pre_stderr
-    } else {
-        post_tvalues <- (post_mat - pre_means-abs_shift)/pre_stderr
-    }
-    return(post_tvalues)
-}
-
-#' Calculate Probe p-values using a differential unpaired t-test
-#'
-#' @param probe_mat numeric matrix or data.frame of values
-#' @param colData_in design data.frame
-#' @param sd_shift standard deviation shift to use when calculating p-values
-#' Either sd_shift or abs_shift should be set
-#' @param abs_shift absolute shift to use when calculating p-values
-#'
-#' @return matrix of p-values on the post columns defined in the colData matrix
-#' @export
-#'
-#' @examples
-#' data(heffron2021_wuhan)
-#' colData_wu <- colData(heffron2021_wuhan)
-#' pval_res <- calcProbePValuesTUnpaired(assay(heffron2021_wuhan), colData_wu)
-calcProbePValuesTUnpaired<-function(
-        probe_mat,
-        colData_in,
-        sd_shift=NA,
-        abs_shift=NA
-) {
-    if (!is.na(sd_shift) && !is.na(abs_shift)) {
-        stop("Either sd or abs can be set, not both.")
-    }
-    pre_cols <- rownames(colData_in)[tolower(colData_in$visit) =="pre"]
-    post_cols <- rownames(colData_in)[tolower(colData_in$visit) == "post"]
-
-    pre_means <- rowMeans(probe_mat[,pre_cols])
-    pre_sds <- matrixStats::rowSds(as.matrix(probe_mat[,pre_cols]))
-    post_means <- rowMeans(probe_mat[,post_cols])
-    post_sds <- matrixStats::rowSds(as.matrix(probe_mat[,post_cols]))
-    pre_var <- matrixStats::rowVars(as.matrix(probe_mat[,pre_cols]))
-    n <- length(pre_cols)
-    pre_stderr <- sqrt(pre_var / n)
-    dfree <- n-1
-
-    pars <- data.frame(
-        pre_mean = pre_means, pre_sds = pre_sds,
-        post_mean = post_means, post_sds = post_sds,
-        pre_stderr = pre_stderr, diff_mean = post_means - pre_means,
-        dfree = rep(dfree, nrow(probe_mat)),
-        stringsAsFactors=FALSE
-    )
-    rownames(pars) <- rownames(probe_mat)
-    post_mat <- probe_mat[,post_cols]
-    post_tv <- getPostTVal(post_mat, pre_means, pre_stderr,
-        pre_sds, sd_shift, abs_shift)
-    colnames(post_tv) <- post_cols
-
-    ans <- matrix(NA, nrow = nrow(probe_mat),ncol=length(post_cols))
-    rownames(ans) <- rownames(probe_mat)
-    colnames(ans) <- post_cols
-
-
-    for (post_col in post_cols) {
-        ans[,post_col] <-
-            stats::pt(q=post_tv[,post_col], df=dfree, lower.tail=FALSE)
-    }
-    ans <- as.data.frame(ans,stringsAsFactors=FALSE)
-
-    pars <- cbind(pars, post_tv)
-    attr(ans, "pars") <- pars
-    return(ans)
-}
 
 #' Calculate protein-level p-values
 #'

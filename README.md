@@ -4,6 +4,7 @@
 # HERON
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The goal of HERON (**H**ierarchical **E**pitope p**RO**tein bi**N**ding)
@@ -24,17 +25,9 @@ BiocManager::install(version='devel')
 BiocManager::install("HERON")
 ```
 
-Or you can install the released version of HERON from
+Or you can install the development version of HERON from
 [github](https://github.com/Ong-Research/HERON) with:
 
 ``` r
-devtools::install_github("Ong-Research/HERON")
-```
-
-And the development version from
-[GitHub](https://github.com/Ong-Research/HERON) with:
-
-``` r
-# install.packages("devtools")
 devtools::install_github("Ong-Research/HERON")
 ```

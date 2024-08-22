@@ -1,8 +1,8 @@
 Package: HERON
 Type: Package
-Date: 2023-06-23
+Date: 2024-08-22
 Title: Hierarchical Epitope pROtein biNding
-Version: 1.3.0
+Version: 1.3.1
 Authors@R: c(
     person(given="Sean",
            family = "McIlwain",
@@ -39,8 +39,8 @@ Imports:
     Matrix,
     limma,
     methods
-RoxygenNote: 7.2.3
-biocViews: Microarray, Software, Sequencing, Coverage
+RoxygenNote: 7.3.1
+biocViews: Microarray, Software
 Suggests: 
     knitr,
     rmarkdown,
@@ -48,7 +48,7 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Depends: 
-    R (>= 4.3.0),
+    R (>= 4.4.0),
     SummarizedExperiment (>= 1.1.6),
     GenomicRanges,
     IRanges,

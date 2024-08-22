@@ -65,8 +65,8 @@ https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8245122/ publication.
 
 The *HERONSequenceDataSet* object is the first object needed for running HERON.
 The *HERONSequenceDataSet* is a subclass of *SummarizedExperiment* from 
-base Bioconductor. The components are a sequence *data.frame* or *matrix* where rows 
-are amino acid sequences of the peptide binding probe and the columns are
+base Bioconductor. The components are a sequence *data.frame* or *matrix* where 
+rows are amino acid sequences of the peptide binding probe and the columns are
 samples, a colData *DFrame*, and a metadata *data.frame* that maps 
 sequences to probes.
 
@@ -499,7 +499,7 @@ It is used in the *getKofN* function. The data type of the
 column can be either a character or factor. When the condition
 column exists in the *colData*, three columns (number of 
 samples (K), frequency (F), and percent (P)) are provided for
-each unique factor.
+each unique factor/character value.
 
 ```{r}
 col_data <- colData(heffron2021_wuhan)

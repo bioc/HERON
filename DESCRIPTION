@@ -48,7 +48,7 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Depends: 
-    R (>= 4.3.0),
+    R (>= 4.4.0),
     SummarizedExperiment (>= 1.1.6),
     GenomicRanges,
     IRanges,
